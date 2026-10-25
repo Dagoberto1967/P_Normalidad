@@ -1,0 +1,568 @@
+---
+title: "Pruebas de normalidad"
+subtitle: "Fundamentos teóricos y aplicación en R"
+author: 
+  - name: Dagoberto Salgado Horta
+    affiliation: "Universidad del Tolima"
+    affiliation-url: "https://www.ut.edu.co/"
+date: today
+lang: es
+title-block-banner: "#98b6ed"
+
+format:
+  html:
+    page-layout: full
+    fontsize: 14pt
+    toc: true
+    toc-depth: 3
+    toc-location: right
+    number-sections: true
+    code-fold: true
+    code-summary: "Ver código"
+    theme: dark
+    highlight-style: monokai
+    html-math-method: katex
+    smooth-scroll: true
+    link-external-newwindow: true
+    code-overflow: scroll
+    favicon: favicon.ico
+    
+editor: visual
+
+knitr:
+  opts_chunk:
+    message: false
+    warning: false
+    fig.align: center
+    fig.width: 6
+    fig.height: 6
+    out.width: "70%"
+---
+
+```{=html}
+<div style="position:absolute; top:10px; right:10px;">
+<img src="Logo_ut.png" width="150">
+</div>
+```
+
+```{=html}
+<style>
+body{
+  background-color:#f7f6ed;
+  font-size:130%;
+  text-align:justify;
+}
+</style>
+```
+
+# .Introducción
+
+La distribución normal es una distribución de probabilidad continua, simétrica y unimodal, con forma de campana. Se caracteriza por su media $(\mu)$ y desviación estándar $(\sigma)$. Muchas técnicas estadísticas clásicas, por ejemplo, ciertos intervalos de confianza y pruebas *t* se fundamentan en la normalidad de la población, de los errores o de los residuos, según el procedimiento utilizado.
+
+Evaluar la normalidad no significa comprobar que los datos sean “perfectamente normales”. En la práctica se busca determinar si las desviaciones observadas respecto de una distribución normal son suficientemente importantes para afectar el análisis previsto. Para ello se combinan métodos gráficos, pruebas estadísticas y conocimiento del contexto.
+
+> **Idea central:** no se debe decidir únicamente con un valor *p*. Conviene revisar el gráfico Q-Q, la forma de la distribución, los valores atípicos, el tamaño de muestra y los supuestos del método estadístico que se desea aplicar.
+
+# ¿Qué significa normalidad?
+
+Una variable aleatoria $X$ tiene distribución normal si su función de densidad es
+
+$$f(x)=\frac{1}{\sigma\sqrt{2\pi}}
+\exp\left[-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2\right],
+\qquad -\infty < x < \infty,$$
+
+donde:
+
+- $\mu$ es la media poblacional.
+- $\sigma$ es la desviación estándar poblacional, con $\sigma>0$.
+- $\sigma^2$ es la varianza poblacional.
+
+Sus características principales son:
+
+1.  Tiene forma de campana y es unimodal.
+2.  Es simétrica alrededor de la media.
+3.  En una normal, media, mediana y moda coinciden.
+4.  El área total bajo la curva es igual a 1.
+5.  La distribución queda determinada por $\mu$ y $\sigma$.
+6.  Sus colas se aproximan al eje horizontal sin tocarlo.
+
+La regla aproximada 68–95–99,7 establece que, en una distribución normal, alrededor del 68 % de los valores está a una desviación estándar de la media; el 95 % a dos; y el 99,7 % a tres.
+
+**Normalidad de los datos y normalidad de los errores**
+
+Es importante distinguir entre:
+
+- **Normalidad marginal de una variable:** se estudia si los valores de una variable tienen una distribución aproximadamente normal.
+- **Normalidad de los errores o residuos:** en modelos de regresión y otros modelos estadísticos, el supuesto suele referirse a los errores o residuos, no necesariamente a cada variable explicativa.
+- **Normalidad de la media muestral:** bajo condiciones apropiadas, la distribución de las medias de muestras repetidas puede aproximarse a una normal por el teorema central del límite, aunque la variable original no sea normal.
+
+Por tanto, antes de realizar una prueba, hay que identificar qué variable debe cumplir el supuesto para el análisis elegido.
+
+**¿Por qué evaluar la normalidad?**
+
+La evaluación de normalidad puede ayudar a:
+
+- Seleccionar procedimientos estadísticos apropiados.
+- Examinar si un supuesto de un modelo resulta razonable.
+- Detectar asimetría, colas pesadas, multimodalidad o valores extremos.
+- Decidir si conviene utilizar métodos robustos, transformaciones o procedimientos no paramétricos.
+
+La normalidad no es un requisito universal para todas las técnicas paramétricas. Por ejemplo, la prueba *t* puede ser razonablemente robusta frente a desviaciones moderadas bajo ciertas condiciones, especialmente con muestras adecuadas y sin valores extremos graves. En cambio, la independencia, la estructura del diseño y la ausencia de observaciones influyentes pueden ser igual o más importantes.
+
+# .Métodos gráficos de evaluación
+
+Los métodos gráficos permiten valorar la forma de la distribución y la importancia práctica de las desviaciones. No ofrecen por sí solos una decisión formal de hipótesis, pero complementan las pruebas analíticas.
+
+## .Histograma y curva de densidad
+
+El histograma agrupa los datos en intervalos y muestra sus frecuencias o densidades. Una curva de densidad suavizada ayuda a visualizar la forma general.
+
+**Qué observar:**
+
+- Simetría aproximada.
+- Una sola moda o varias modas.
+- Colas muy largas.
+- Concentraciones o huecos inusuales.
+- Observaciones aisladas.
+
+El aspecto del histograma depende del número y amplitud de los intervalos. Con muestras pequeñas puede ser irregular; con muestras grandes puede revelar desviaciones pequeñas que no son importantes para el análisis.
+
+```{r}
+#| label: fig-histograma
+#| fig-cap: "Histogramas y curvas de densidad para datos normales y asimétricos"
+#| fig-width: 9
+#| fig-height: 4.5
+library(ggplot2)
+
+set.seed(123)
+datos_normal <- rnorm(1000, mean = 50, sd = 10)
+datos_asimetricos <- rexp(1000, rate = 0.1)
+
+datos_demo <- rbind(
+  data.frame(valor = datos_normal, grupo = "Normal simulada"),
+  data.frame(valor = datos_asimetricos, grupo = "Exponencial simulada")
+)
+
+ggplot(datos_demo, aes(x = valor, fill = grupo)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 30, alpha = 0.55, color = "white") +
+  geom_density(alpha = 0.2, linewidth = 0.8) +
+  facet_wrap(~ grupo, scales = "free") +
+  labs(title = "Distribuciones con formas diferentes",
+       x = "Valor", y = "Densidad", fill = "Grupo") +
+  theme_minimal()
+```
+
+## .Gráfico Q-Q normal
+
+El gráfico cuantil-cuantil (Q-Q) compara los cuantiles observados en la muestra con los cuantiles teóricos de una distribución normal.
+
+- Si los puntos se sitúan aproximadamente sobre una línea recta, la normalidad resulta plausible.
+- Una curva en forma de S puede indicar diferencias en las colas o en la curtosis.
+- Una curvatura sistemática puede indicar asimetría.
+- Puntos muy alejados en los extremos pueden señalar colas distintas de las normales o valores atípicos.
+
+La interpretación debe considerar el tamaño de muestra: con muchos datos, pequeñas desviaciones pueden hacerse visibles.
+
+```{r}
+#| label: fig-qq
+#| fig-cap: "Gráficos Q-Q normales para una muestra normal y otra asimétrica"
+#| fig-width: 9
+#| fig-height: 4.5
+ggplot(datos_demo, aes(sample = valor)) +
+  stat_qq() +
+  stat_qq_line(color = "red", linetype = "dashed") +
+  facet_wrap(~ grupo, scales = "free") +
+  labs(title = "Gráficos Q-Q normales",
+       x = "Cuantiles teóricos", y = "Cuantiles observados") +
+  theme_minimal()
+```
+
+También se puede construir un Q-Q plot con la función base de R:
+
+```{r}
+par(mfrow = c(1, 2))
+qqnorm(datos_normal, main = "Datos normales simulados")
+qqline(datos_normal, col = "red", lwd = 2)
+
+qqnorm(datos_asimetricos, main = "Datos exponenciales simulados")
+qqline(datos_asimetricos, col = "red", lwd = 2)
+par(mfrow = c(1, 1))
+```
+
+## .Diagrama de caja
+
+El diagrama de caja resume la mediana, los cuartiles y posibles observaciones extremas. No es una prueba de normalidad, pero permite detectar asimetría y valores potencialmente atípicos.
+
+```{r}
+#| label: fig-boxplot
+#| fig-cap: "Diagramas de caja para comparar la distribución de los datos"
+ggplot(datos_demo, aes(x = grupo, y = valor, fill = grupo)) +
+  geom_boxplot(show.legend = FALSE) +
+  labs(title = "Diagrama de caja", x = NULL, y = "Valor") +
+  theme_minimal()
+```
+
+Un punto fuera de los bigotes no demuestra por sí mismo que un dato sea erróneo ni que la distribución no sea normal. Debe investigarse con criterios sustantivos y de calidad de datos.
+
+# .Pruebas analíticas de normalidad
+
+Las pruebas analíticas formulan hipótesis y calculan un estadístico de prueba y un valor *p*.
+
+En general:
+
+- $H_0$: los datos provienen de una población con distribución normal.
+- $H_1$: los datos no provienen de una población con distribución normal.
+
+Con un nivel de significación $\alpha=0.05$:
+
+- Si $p \leq 0.05$, se rechaza $H_0$; hay evidencia estadística contra la normalidad.
+- Si $p > 0.05$, no se rechaza $H_0$; la prueba no encontró evidencia suficiente para rechazar la normalidad.
+
+**No rechazar** $H_0$ no demuestra que los datos sean normales. Puede ocurrir que la muestra sea demasiado pequeña para detectar una desviación. Asimismo, un valor *p* pequeño en una muestra enorme puede corresponder a una desviación de escasa importancia práctica.
+
+## .Shapiro-Wilk
+
+La prueba de Shapiro-Wilk evalúa la compatibilidad de los datos con una distribución normal. Suele tener buena potencia en una variedad de alternativas.
+
+En R se utiliza `shapiro.test(x)`. La función de R requiere entre 3 y 5000 observaciones no faltantes.
+
+```{r}
+shapiro.test(datos_normal)
+shapiro.test(datos_asimetricos)
+```
+
+**Ventajas:**
+
+- Es ampliamente conocida y está implementada en R base.
+- Tiene buen rendimiento en muchas situaciones.
+- Es sencilla de ejecutar.
+
+**Limitaciones:**
+
+- En muestras grandes puede detectar desviaciones pequeñas y poco relevantes.
+- En muestras pequeñas puede no detectar desviaciones importantes por falta de potencia.
+- No reemplaza la inspección gráfica ni la evaluación de los supuestos del modelo.
+
+No existe una regla universal según la cual Shapiro-Wilk deba utilizarse exclusivamente con muestras menores de 50. Su uso depende del tamaño muestral, del objetivo y de la prueba o modelo que se vaya a aplicar.
+
+## .Anderson-Darling
+
+Anderson-Darling compara la distribución empírica con la distribución teórica y concede especial peso a las discrepancias en las colas. En R, la función `ad.test()` del paquete `nortest` implementa la prueba para normalidad.
+
+```{r}
+# Instalar una sola vez si hace falta:
+# install.packages("nortest")
+
+library(nortest)
+
+ad.test(datos_normal)
+ad.test(datos_asimetricos)
+```
+
+**Ventajas:**
+
+- Puede ser sensible a discrepancias en las colas.
+- Es útil como complemento del Q-Q plot.
+
+**Limitaciones:**
+
+- El resultado depende del tamaño de muestra y de la forma de la alternativa.
+- No identifica por sí sola la causa de la desviación.
+- Conviene comprobar las condiciones de uso descritas en la documentación del paquete.
+
+## .Cramér-von Mises
+
+La prueba de Cramér-von Mises compara la distribución empírica con la distribución teórica a lo largo de toda la distribución. En R, `cvm.test()` está disponible en `nortest`.
+
+```{r}
+cvm.test(datos_normal)
+cvm.test(datos_asimetricos)
+```
+
+Es una alternativa a Anderson-Darling y a otras pruebas de ajuste. No debe describirse como universalmente mejor o peor: la potencia relativa depende de la desviación concreta respecto de la normalidad.
+
+## .Lilliefors (Kolmogorov-Smirnov con parámetros estimados)
+
+La prueba de Lilliefors adapta la idea de Kolmogorov-Smirnov al caso en que la media y la desviación estándar de la normal se estiman a partir de la propia muestra. La prueba Kolmogorov-Smirnov estándar no debe aplicarse sin ajustes para probar normalidad cuando los parámetros se estiman con los mismos datos.
+
+En R:
+
+```{r}
+lillie.test(datos_normal)
+lillie.test(datos_asimetricos)
+```
+
+La función `lillie.test()` también pertenece al paquete `nortest`.
+
+## .Otras pruebas
+
+Existen otras pruebas, como Jarque-Bera, basada en la asimetría y la curtosis, y procedimientos basados en momentos o en distancias entre distribuciones. Su disponibilidad y supuestos varían según el paquete. No es necesario ejecutar todas las pruebas posibles: se recomienda seleccionar una prueba apropiada y complementarla con gráficos.
+
+# .Ejemplo completo en R
+
+El siguiente ejemplo genera dos muestras: una normal y otra exponencial. La distribución exponencial presenta asimetría positiva, por lo que sirve como contraste didáctico.
+
+```{r}
+set.seed(123)
+
+datos_normal <- rnorm(1000, mean = 50, sd = 10)
+datos_asimetricos <- rexp(1000, rate = 0.1)
+
+# Resumen descriptivo
+resumen <- data.frame(
+  grupo = c("Normal simulada", "Exponencial simulada"),
+  n = c(length(datos_normal), length(datos_asimetricos)),
+  media = c(mean(datos_normal), mean(datos_asimetricos)),
+  mediana = c(median(datos_normal), median(datos_asimetricos)),
+  desviacion_estandar = c(sd(datos_normal), sd(datos_asimetricos)),
+  asimetria_aprox = c(
+    mean((datos_normal - mean(datos_normal))^3) / sd(datos_normal)^3,
+    mean((datos_asimetricos - mean(datos_asimetricos))^3) /
+      sd(datos_asimetricos)^3
+  )
+)
+
+knitr::kable(resumen, digits = 3,
+             caption = "Resumen descriptivo de las muestras simuladas")
+```
+
+## .Ejecutar varias pruebas y organizar los valores p
+
+```{r}
+library(nortest)
+
+pruebas_normalidad <- function(x, nombre = "Muestra") {
+  # Shapiro-Wilk admite entre 3 y 5000 observaciones no faltantes.
+  x <- x[is.finite(x)]
+
+  if (length(x) < 3) {
+    stop("Se necesitan al menos 3 observaciones válidas.")
+  }
+
+  if (length(x) > 5000) {
+    warning("Shapiro-Wilk se ejecutará sobre una muestra aleatoria de 5000 observaciones.")
+    set.seed(123)
+    x_shapiro <- sample(x, 5000)
+  } else {
+    x_shapiro <- x
+  }
+
+  resultados <- data.frame(
+    prueba = c("Shapiro-Wilk", "Anderson-Darling",
+               "Cramér-von Mises", "Lilliefors"),
+    p_valor = c(
+      shapiro.test(x_shapiro)$p.value,
+      ad.test(x)$p.value,
+      cvm.test(x)$p.value,
+      lillie.test(x)$p.value
+    )
+  )
+
+  resultados$decision_05 <- ifelse(
+    resultados$p_valor <= 0.05,
+    "Rechazar normalidad",
+    "No rechazar normalidad"
+  )
+
+  resultados$muestra <- nombre
+  resultados[, c("muestra", "prueba", "p_valor", "decision_05")]
+}
+
+resultados_normal <- pruebas_normalidad(datos_normal, "Normal simulada")
+resultados_asimetricos <- pruebas_normalidad(datos_asimetricos,
+                                              "Exponencial simulada")
+
+resultados <- rbind(resultados_normal, resultados_asimetricos)
+
+knitr::kable(resultados, digits = 5,
+             caption = "Resultados de las pruebas de normalidad")
+```
+
+**Precaución:** las pruebas no son independientes entre sí, pues analizan la misma muestra y contrastan hipótesis relacionadas. Ejecutar muchas pruebas y elegir únicamente la que produzca el resultado deseado no es una práctica recomendable. La función anterior sirve para fines didácticos y comparativos.
+
+# .Cómo interpretar los resultados
+
+Supongamos que una prueba produce $p=0.18$. Como $0.18>0.05$, no se rechaza la hipótesis nula. La conclusión correcta sería:
+
+> Con un nivel de significación del 5 %, no se encontró evidencia estadística suficiente para rechazar la hipótesis de normalidad. Este resultado no prueba que la población sea exactamente normal; debe interpretarse junto con los gráficos y el contexto del análisis.
+
+Si una prueba produce $p=0.003$, como $0.003<0.05$, se rechaza la hipótesis nula. La conclusión sería:
+
+> Con un nivel de significación del 5 %, se encontró evidencia estadística contra la hipótesis de normalidad. Se recomienda examinar el gráfico Q-Q, la asimetría, las colas y los posibles valores atípicos, y valorar si la desviación afecta al procedimiento estadístico previsto.
+
+No se debe concluir automáticamente que hay que transformar los datos o utilizar una prueba no paramétrica. La decisión depende del objetivo, del diseño, del tamaño de muestra, de los residuos del modelo y de la robustez del método que se pretende usar.
+
+# .¿Qué ocurre con los datos faltantes y los valores atípicos?
+
+Antes de probar normalidad:
+
+1.  Verifique que la variable sea numérica y esté medida de manera apropiada.
+2.  Revise los valores faltantes y los códigos especiales (por ejemplo, 999 usado para representar “sin dato”).
+3.  Compruebe errores de digitación y unidades.
+4.  Investigue valores atípicos, sin eliminarlos únicamente para obtener un valor *p* mayor.
+5.  Considere si la muestra mezcla subgrupos distintos; una mezcla de poblaciones puede generar una forma no normal.
+
+En R, un flujo inicial puede ser:
+
+```{r}
+# Sustituya 'mi_variable' por la variable de su base de datos.
+# datos <- read.csv("mi_archivo.csv")
+
+# Resumen y valores faltantes
+# summary(datos$mi_variable)
+# sum(is.na(datos$mi_variable))
+
+# Selección de valores finitos para el análisis
+# x <- datos$mi_variable[is.finite(datos$mi_variable)]
+
+# Histograma y Q-Q plot
+# hist(x, probability = TRUE, main = "Histograma", xlab = "Valor")
+# lines(density(x), col = "blue", lwd = 2)
+# qqnorm(x)
+# qqline(x, col = "red", lwd = 2)
+```
+
+# .Normalidad y selección de procedimientos estadísticos
+
+La elección de un método no debe basarse exclusivamente en una prueba de normalidad.
+
+- **Una muestra o una media:** examine la distribución de la variable, los valores extremos y las condiciones del procedimiento.
+- **Comparación de dos grupos independientes:** valore la forma de los datos dentro de cada grupo y la robustez de la prueba *t*. Si hay asimetría marcada o valores extremos, puede considerarse un método robusto o una alternativa apropiada.
+- **Datos pareados:** examine la distribución de las diferencias entre las mediciones, no solo la distribución de cada medición por separado, cuando se use la prueba *t* pareada.
+- **ANOVA:** revise principalmente los residuos del modelo, además de la homogeneidad de varianzas y la independencia.
+- **Regresión lineal:** evalúe los residuos para los supuestos inferenciales correspondientes; no se exige que todas las variables explicativas sean normales.
+- **Muestras grandes:** las inferencias sobre medias pueden ser robustas bajo condiciones apropiadas, pero el tamaño muestral no corrige automáticamente la dependencia, el sesgo de selección, los valores extremos influyentes ni un diseño inadecuado.
+
+Las alternativas no paramétricas tampoco están libres de supuestos. Por ejemplo, la prueba de Wilcoxon y la de Mann-Whitney responden a preguntas específicas y su interpretación no siempre equivale a comparar medianas sin condiciones adicionales.
+
+# .Ejemplo aplicado al contexto educativo
+
+Un investigador desea analizar las puntuaciones de una prueba de matemáticas aplicada a estudiantes. Antes de comparar la media con un valor de referencia o comparar grupos, inspecciona la distribución.
+
+```{r}
+set.seed(2026)
+
+# Ejemplo didáctico de puntuaciones entre 0 y 100.
+# Se simula una variable aproximadamente normal y se limita al rango de la escala.
+puntuaciones <- pmin(pmax(rnorm(120, mean = 70, sd = 10), 0), 100)
+
+# Inspección gráfica
+par(mfrow = c(1, 2))
+hist(puntuaciones, probability = TRUE,
+     main = "Puntuaciones", xlab = "Puntaje",
+     col = "grey85", border = "white")
+lines(density(puntuaciones), lwd = 2)
+qqnorm(puntuaciones, main = "Q-Q plot de puntuaciones")
+qqline(puntuaciones, col = "red", lwd = 2)
+par(mfrow = c(1, 1))
+
+# Prueba analítica
+shapiro.test(puntuaciones)
+```
+
+Como los puntajes se han limitado al rango de 0 a 100, la distribución simulada no es una normal exacta. Este detalle permite recordar que una variable acotada puede mostrar pequeñas diferencias respecto de la normalidad, aun cuando su forma sea aproximadamente simétrica.
+
+**Ejemplo de redacción de resultados:** “La normalidad de las puntuaciones se examinó mediante un histograma, un gráfico Q-Q y la prueba de Shapiro-Wilk. La decisión se basó en el valor *p* de la prueba, considerando $\alpha=0.05$, y en la magnitud de las desviaciones observadas gráficamente. La evaluación se interpretó en función del procedimiento inferencial previsto”.
+
+Reemplace esa redacción general por los resultados reales de su análisis: incluya el tamaño muestral, el estadístico de la prueba, el valor *p* y una descripción breve de los gráficos.
+
+# .Errores frecuentes
+
+- Afirmar que $p>0.05$ demuestra normalidad.
+- Elegir la prueba estadística únicamente según un umbral rígido de tamaño de muestra.
+- Aplicar la prueba de normalidad a una variable cuando el supuesto relevante corresponde a residuos o diferencias.
+- Ignorar gráficos, valores atípicos o la forma de la distribución.
+- Eliminar observaciones o transformar datos solo para obtener $p>0.05$.
+- Interpretar toda desviación estadísticamente significativa como un problema práctico grave.
+- Suponer que una prueba no paramétrica no tiene supuestos.
+- Aplicar la prueba Kolmogorov-Smirnov estándar como si los parámetros normalizados se conocieran cuando en realidad se estimaron con la misma muestra.
+
+# .Recomendación práctica de trabajo
+
+Un procedimiento ordenado puede ser:
+
+1.  Identificar el supuesto requerido por el análisis estadístico.
+2.  Verificar la calidad de los datos y los valores faltantes.
+3.  Construir un histograma con curva de densidad.
+4.  Examinar el gráfico Q-Q normal.
+5.  Aplicar una prueba analítica adecuada, si aporta información útil.
+6.  Interpretar el valor *p* junto con el tamaño de muestra y la relevancia de las desviaciones.
+7.  Elegir el procedimiento estadístico según el diseño, los supuestos y el objetivo de investigación.
+8.  Documentar las decisiones y reportar los resultados de manera transparente.
+
+# .Referencias y documentación
+
+- R Core Team. *R: A Language and Environment for Statistical Computing*. Documentación oficial: <https://www.R-project.org/>.
+- Documentación de `shapiro.test()` en R: <https://stat.ethz.ch/R-manual/R-devel/library/stats/html/shapiro.test.html>.
+- Gross, J., & Ligges, U. Paquete `nortest`: *Tests for Normality*. CRAN: <https://CRAN.R-project.org/package=nortest>.
+- Documentación de `qqnorm()` y `qqline()` en R: <https://stat.ethz.ch/R-manual/R-devel/library/stats/html/qqnorm.html>.
+- NIST/SEMATECH. *e-Handbook of Statistical Methods*, sección sobre pruebas de normalidad: <https://www.itl.nist.gov/div898/handbook/>.
+
+------------------------------------------------------------------------
+
+# Apéndice: script independiente para R
+
+El siguiente script puede copiarse en un archivo `.R` y ejecutarse fuera de Quarto. Instale `ggplot2` y `nortest` una sola vez si aún no están instalados.
+
+``` r
+# ============================================================
+# EVALUACIÓN DE NORMALIDAD: MÉTODOS GRÁFICOS Y ANALÍTICOS
+# ============================================================
+
+# install.packages(c("ggplot2", "nortest")) # Ejecutar una sola vez
+library(ggplot2)
+library(nortest)
+
+set.seed(123)
+
+# 1. Generación de datos
+datos_normal <- rnorm(1000, mean = 50, sd = 10)
+datos_asimetricos <- rexp(1000, rate = 0.1)
+
+df <- rbind(
+  data.frame(valor = datos_normal, tipo = "Normal simulada"),
+  data.frame(valor = datos_asimetricos, tipo = "Exponencial simulada")
+)
+
+# 2. Histograma y densidad
+ggplot(df, aes(x = valor, fill = tipo)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 30, alpha = 0.5, position = "identity") +
+  geom_density(alpha = 0.2) +
+  facet_wrap(~ tipo, scales = "free") +
+  theme_minimal() +
+  labs(title = "Histograma con curva de densidad",
+       x = "Valor", y = "Densidad")
+
+# 3. Gráfico Q-Q
+ggplot(df, aes(sample = valor)) +
+  stat_qq() +
+  stat_qq_line(color = "red", linetype = "dashed") +
+  facet_wrap(~ tipo, scales = "free") +
+  theme_minimal() +
+  labs(title = "Gráficos Q-Q normales",
+       x = "Cuantiles teóricos", y = "Cuantiles observados")
+
+# 4. Pruebas analíticas
+# Shapiro-Wilk: entre 3 y 5000 observaciones válidas
+shapiro.test(datos_normal)
+shapiro.test(datos_asimetricos)
+
+# Anderson-Darling
+ad.test(datos_normal)
+ad.test(datos_asimetricos)
+
+# Cramér-von Mises
+cvm.test(datos_normal)
+cvm.test(datos_asimetricos)
+
+# Lilliefors
+lillie.test(datos_normal)
+lillie.test(datos_asimetricos)
+
+# 5. Interpretación orientativa con alfa = 0.05
+# p <= 0.05: rechazar H0 de normalidad.
+# p > 0.05: no rechazar H0; no demuestra normalidad.
+# Siempre complementar con gráficos y contexto.
+```
