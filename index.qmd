@@ -1,6 +1,6 @@
 ---
-title: "Pruebas de normalidad: métodos gráficos y analíticos"
-subtitle: "Fundamentos teóricos, interpretación y aplicación en R"
+title: "Pruebas de normalidad"
+subtitle: "Fundamentos teóricos y aplicación en R"
 author: 
   - name: Dagoberto Salgado Horta
     affiliation: "Universidad del Tolima"
